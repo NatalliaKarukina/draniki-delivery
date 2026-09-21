@@ -64,6 +64,59 @@ body {
   color: #8f8ba8;
 }
 
+.rotate-hint {
+  display: none;
+  margin: 10px 0 0;
+  font-family: -apple-system, 'Segoe UI', Consolas, monospace;
+  font-size: 12px;
+  color: #ffd23f;
+}
+
+@media (max-width: 700px) and (orientation: portrait) {
+  .rotate-hint {
+    display: block;
+  }
+}
+
+/* ---------- Компактный корпус на маленьких экранах ---------- */
+
+@media (max-width: 700px) {
+  body {
+    padding: 12px 10px;
+  }
+  .intro {
+    margin-bottom: 14px;
+  }
+  .intro-title {
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+  .intro-title span {
+    font-size: 11px;
+    margin-top: 6px;
+  }
+  .intro-text {
+    font-size: 13px;
+  }
+  .intro-hint {
+    font-size: 11px;
+  }
+  .tv-container {
+    padding: 14px 16px 10px 16px;
+    border-radius: 16px;
+  }
+  .tv-top {
+    padding-bottom: 8px;
+  }
+  .screen-frame {
+    padding: 8px 10px;
+    border-radius: 12px;
+  }
+  .tv-bottom {
+    padding-top: 8px;
+  }
+}
+
 /* ---------- Масштабирующая сцена (адаптив под маленькие экраны) ---------- */
 
 .stage {

@@ -547,7 +547,6 @@
   function fitStage() {
     var stage = document.getElementById('stage');
     var tv = document.querySelector('.tv-container');
-    var intro = document.querySelector('.intro');
     if (!stage || !tv) return;
 
     tv.style.transform = 'none';
@@ -556,15 +555,14 @@
 
     var bodyStyle = window.getComputedStyle(document.body);
     var vPadding = parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom);
-    var introH = intro ? intro.offsetHeight + 22 : 0;
 
+    // Высота описания намеренно не учитывается: телевизор всегда старается
+    // показаться в полный (или ограниченный шириной) размер, а если вместе
+    // с описанием он не помещается в окно — страница просто прокручивается.
     var margin = 16;
     var availW = window.innerWidth - margin;
-    var availH = window.innerHeight - vPadding - introH - margin;
-    var widthScale = availW / naturalW;
-    var scale = Math.min(1, widthScale, availH / naturalH);
-    var minScale = Math.min(1, widthScale, 0.3);
-    if (scale < minScale) scale = minScale; // не сжимать телевизор до нечитаемости — лучше проскроллить
+    var availH = window.innerHeight - vPadding - margin;
+    var scale = Math.min(1, availW / naturalW, availH / naturalH);
 
     tv.style.transform = 'scale(' + scale + ')';
     stage.style.width = Math.round(naturalW * scale) + 'px';
