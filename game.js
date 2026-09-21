@@ -285,42 +285,6 @@
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
-  // Фоновый дождь — атмосферный слой, идёт всегда (даже на стартовом экране)
-  var RAIN_COUNT = 70;
-  var rain = [];
-  for (var ri = 0; ri < RAIN_COUNT; ri++) {
-    rain.push({
-      x: Math.random() * W, y: Math.random() * GROUND_Y,
-      len: 10 + Math.random() * 14, speed: 260 + Math.random() * 180
-    });
-  }
-
-  function updateRain(dt) {
-    for (var i = 0; i < rain.length; i++) {
-      var r = rain[i];
-      r.y += r.speed * dt;
-      r.x -= r.speed * 0.22 * dt;
-      if (r.y > GROUND_Y || r.x < -10) {
-        r.y = -10;
-        r.x = Math.random() * W;
-      }
-    }
-  }
-
-  function drawRain() {
-    ctx.save();
-    ctx.strokeStyle = 'rgba(180, 220, 255, 0.32)';
-    ctx.lineWidth = 1;
-    for (var i = 0; i < rain.length; i++) {
-      var r = rain[i];
-      ctx.beginPath();
-      ctx.moveTo(r.x, r.y);
-      ctx.lineTo(r.x - r.len * 0.25, r.y - r.len);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
   // Процедурный силуэт панелек (фикс. массив, тайлится по ширине PATTERN_W)
   var PATTERN_W = 900;
   var BUILDINGS = buildSkyline();
@@ -587,8 +551,6 @@
   // ---------------------------------------------------------
 
   function update(dt) {
-    updateRain(dt);
-
     if (state !== STATE_PLAYING) {
       updateParticles(dt);
       return;
@@ -754,7 +716,6 @@
 
     drawSky();
     drawSkyline(bgOffset);
-    drawRain();
     roadDecor.forEach(drawRoadDecorItem);
     drawRoad();
 
