@@ -38,20 +38,19 @@
     return 440 * Math.pow(2, (midi - 69) / 12);
   }
 
-  // Стилизованная 8-битная аранжировка в характере беларускай народнай
-  // песні "Касіў Ясь канюшыну" (вальсовы размер 3/4, лад мінор) —
-  // не даслоўная транскрыпцыя, а хіптюнавы матыў у яе духу.
-  var TEMPO = 132;
+  // Бодрая мажорная 8-битная тема: скачущие стаккато-арпеджио
+  // (I-I-IV-V-vi-IV-V-I), быстрый темп — под настроение весёлой доставки.
+  var TEMPO = 150;
   var BEAT = 60 / TEMPO;
   var MELODY = [
-    ['D4', 1], ['F4', 1], ['A4', 1],
-    ['G4', 1], ['F4', 1], ['E4', 1],
-    ['D4', 1], ['D4', 0.5], ['E4', 0.5], ['F4', 1],
-    ['E4', 2], [null, 1],
-    ['A4', 1], ['C5', 1], ['A4', 1],
-    ['G4', 1], ['F4', 1], ['E4', 1],
-    ['F4', 1], ['E4', 1], ['D4', 1],
-    ['D4', 2], [null, 1]
+    ['C4', 0.5], ['E4', 0.5], ['G4', 0.5], ['C5', 0.5], ['G4', 0.5], ['E4', 0.5], ['C4', 0.5], [null, 0.5],
+    ['E4', 0.5], ['G4', 0.5], ['C5', 0.5], ['E5', 0.5], ['C5', 0.5], ['G4', 0.5], ['E4', 0.5], [null, 0.5],
+    ['F4', 0.5], ['A4', 0.5], ['C5', 0.5], ['F5', 0.5], ['C5', 0.5], ['A4', 0.5], ['F4', 0.5], [null, 0.5],
+    ['G4', 0.5], ['B4', 0.5], ['D5', 0.5], ['G5', 0.5], ['D5', 0.5], ['B4', 0.5], ['G4', 0.5], [null, 0.5],
+    ['A4', 0.5], ['C5', 0.5], ['E5', 0.5], ['A5', 0.5], ['E5', 0.5], ['C5', 0.5], ['A4', 0.5], [null, 0.5],
+    ['F4', 0.5], ['A4', 0.5], ['C5', 0.5], ['F5', 0.5], ['C5', 0.5], ['A4', 0.5], ['F4', 0.5], [null, 0.5],
+    ['G4', 0.5], ['B4', 0.5], ['D5', 0.5], ['G5', 0.5], ['F5', 0.5], ['E5', 0.5], ['D5', 0.5], [null, 0.5],
+    ['C5', 0.5], ['B4', 0.5], ['A4', 0.5], ['G4', 0.5], ['E4', 0.5], ['C4', 0.5], ['C4', 1]
   ];
 
   function initAudio() {
@@ -460,9 +459,52 @@
     if (THROW_KEYS[e.code]) throwDranik();
   });
 
-  canvas.addEventListener('mousedown', function () {
-    if (state === STATE_READY) startGame();
-  });
+  function handleControlTap(action) {
+    if (state === STATE_READY) { startGame(); return; }
+    if (state === STATE_OVER) { restartGame(); return; }
+    action();
+  }
+
+  function bindTapControl(el, action) {
+    if (!el) return;
+    var handler = function (e) {
+      e.preventDefault();
+      handleControlTap(action);
+    };
+    el.addEventListener('touchstart', handler, { passive: false });
+    el.addEventListener('mousedown', handler);
+  }
+
+  bindTapControl(canvas, doJump);
+  bindTapControl(document.getElementById('btnJump'), doJump);
+  bindTapControl(document.getElementById('btnThrow'), throwDranik);
+
+  // ---------------------------------------------------------
+  //  АДАПТИВНЫЙ МАСШТАБ (под маленькие/мобильные экраны)
+  // ---------------------------------------------------------
+
+  function fitStage() {
+    var stage = document.getElementById('stage');
+    var tv = document.querySelector('.tv-container');
+    if (!stage || !tv) return;
+
+    tv.style.transform = 'none';
+    var naturalW = tv.offsetWidth;
+    var naturalH = tv.offsetHeight;
+
+    var margin = 16;
+    var availW = window.innerWidth - margin;
+    var availH = window.innerHeight - margin;
+    var scale = Math.min(1, availW / naturalW, availH / naturalH);
+
+    tv.style.transform = 'scale(' + scale + ')';
+    stage.style.width = Math.round(naturalW * scale) + 'px';
+    stage.style.height = Math.round(naturalH * scale) + 'px';
+  }
+
+  window.addEventListener('resize', fitStage);
+  window.addEventListener('orientationchange', fitStage);
+  fitStage();
 
   // ---------------------------------------------------------
   //  ОБНОВЛЕНИЕ
