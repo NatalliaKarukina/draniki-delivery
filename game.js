@@ -497,16 +497,24 @@
   function fitStage() {
     var stage = document.getElementById('stage');
     var tv = document.querySelector('.tv-container');
+    var intro = document.querySelector('.intro');
     if (!stage || !tv) return;
 
     tv.style.transform = 'none';
     var naturalW = tv.offsetWidth;
     var naturalH = tv.offsetHeight;
 
+    var bodyStyle = window.getComputedStyle(document.body);
+    var vPadding = parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom);
+    var introH = intro ? intro.offsetHeight + 22 : 0;
+
     var margin = 16;
     var availW = window.innerWidth - margin;
-    var availH = window.innerHeight - margin;
-    var scale = Math.min(1, availW / naturalW, availH / naturalH);
+    var availH = window.innerHeight - vPadding - introH - margin;
+    var widthScale = availW / naturalW;
+    var scale = Math.min(1, widthScale, availH / naturalH);
+    var minScale = Math.min(1, widthScale, 0.3);
+    if (scale < minScale) scale = minScale; // не сжимать телевизор до нечитаемости — лучше проскроллить
 
     tv.style.transform = 'scale(' + scale + ')';
     stage.style.width = Math.round(naturalW * scale) + 'px';
