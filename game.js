@@ -493,6 +493,8 @@
     initAudio();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     ensureMusicPlaying();
+    var hint = document.getElementById('soundHint');
+    if (hint) hint.classList.add('is-hidden');
   }
   window.addEventListener('pointerdown', unlockAmbientAudio, { once: true });
   window.addEventListener('keydown', unlockAmbientAudio, { once: true });

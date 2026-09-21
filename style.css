@@ -92,6 +92,25 @@ body {
   color: #ffd23f;
 }
 
+.sound-hint {
+  margin: 10px 0 0;
+  font-family: -apple-system, 'Segoe UI', Consolas, monospace;
+  font-size: 12px;
+  color: #5bff8a;
+  animation: sound-hint-pulse 1.8s ease-in-out infinite;
+  transition: opacity 0.4s ease;
+}
+
+.sound-hint.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes sound-hint-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 @media (max-width: 700px) and (orientation: portrait) {
   .rotate-hint {
     display: block;
