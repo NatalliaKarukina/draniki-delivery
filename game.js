@@ -276,8 +276,9 @@
   var bgOffset = 0;
   var roadDashOffset = 0;
 
-  var streetlamps, distSinceLamp, nextLampGap;
-  var LAMP_PARALLAX = 0.6;
+  var roadDecor, distSinceDecor, nextDecorGap;
+  var DECOR_PARALLAX = 0.6;
+  var DECOR_TYPES = ['lamp', 'tree', 'tree'];
 
   function randRange(a, b) { return a + Math.random() * (b - a); }
   function rectsOverlap(a, b) {
@@ -368,15 +369,15 @@
     sacks = [];
     projectiles = [];
     particles = [];
-    streetlamps = [];
+    roadDecor = [];
 
     distSinceObstacle = 0;
     nextObstacleGap = randRange(340, 520);
     distSinceShop = 0;
     nextShopGap = randRange(420, 560);
     shopOrderIndex = Math.floor(Math.random() * shopOrder.length);
-    distSinceLamp = 0;
-    nextLampGap = randRange(220, 340);
+    distSinceDecor = 0;
+    nextDecorGap = randRange(160, 260);
 
     screenShake = 0;
     bgOffset = 0;
@@ -404,12 +405,20 @@
     }
   }
 
-  function spawnStreetlamp() {
-    streetlamps.push({
-      x: W + 20,
-      flicker: Math.random() * Math.PI * 2,
-      color: Math.random() < 0.5 ? '#5adcff' : '#ff5ad1'
-    });
+  function spawnRoadDecor() {
+    var type = DECOR_TYPES[Math.floor(Math.random() * DECOR_TYPES.length)];
+    if (type === 'lamp') {
+      roadDecor.push({
+        type: type, x: W + 20,
+        flicker: Math.random() * Math.PI * 2,
+        color: Math.random() < 0.5 ? '#5adcff' : '#ff5ad1'
+      });
+    } else {
+      roadDecor.push({
+        type: type, x: W + 20,
+        scale: 0.8 + Math.random() * 0.5
+      });
+    }
   }
 
   function spawnShop() {
@@ -628,15 +637,15 @@
       nextShopGap = randRange(560, 820);
     }
 
-    // --- спавн фонарей (средний слой параллакса) ---
-    distSinceLamp += moveDist;
-    if (distSinceLamp >= nextLampGap) {
-      spawnStreetlamp();
-      distSinceLamp = 0;
-      nextLampGap = randRange(220, 340);
+    // --- спавн фонарей и деревьев (средний слой параллакса) ---
+    distSinceDecor += moveDist;
+    if (distSinceDecor >= nextDecorGap) {
+      spawnRoadDecor();
+      distSinceDecor = 0;
+      nextDecorGap = randRange(160, 260);
     }
-    streetlamps.forEach(function (l) { l.x -= moveDist * LAMP_PARALLAX; l.flicker += dt * 3; });
-    streetlamps = streetlamps.filter(function (l) { return l.x > -30; });
+    roadDecor.forEach(function (d) { d.x -= moveDist * DECOR_PARALLAX; if (d.type === 'lamp') d.flicker += dt * 3; });
+    roadDecor = roadDecor.filter(function (d) { return d.x > -40; });
 
     // --- сдвиг мира ---
     moveAndPrune(obstacles, moveDist);
@@ -746,7 +755,7 @@
     drawSky();
     drawSkyline(bgOffset);
     drawRain();
-    streetlamps.forEach(drawStreetlamp);
+    roadDecor.forEach(drawRoadDecorItem);
     drawRoad();
 
     shops.forEach(drawShop);
@@ -828,6 +837,37 @@
 
     ctx.fillStyle = 'rgba(255, 60, 200, 0.06)';
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  }
+
+  function drawRoadDecorItem(d) {
+    if (d.type === 'lamp') drawStreetlamp(d);
+    else drawTree(d);
+  }
+
+  function drawTree(t) {
+    var s = t.scale;
+    var trunkH = 30 * s;
+    var baseY = GROUND_Y;
+
+    ctx.fillStyle = '#241a12';
+    ctx.fillRect(t.x - 3 * s, baseY - trunkH, 6 * s, trunkH);
+
+    var cy = baseY - trunkH;
+    ctx.fillStyle = '#16261c';
+    ctx.beginPath();
+    ctx.ellipse(t.x - 18 * s, cy - 8 * s, 16 * s, 15 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(t.x + 18 * s, cy - 8 * s, 16 * s, 15 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(t.x, cy - 26 * s, 26 * s, 24 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 120, 220, 0.10)';
+    ctx.beginPath();
+    ctx.ellipse(t.x - 8 * s, cy - 34 * s, 18 * s, 13 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function drawStreetlamp(l) {
