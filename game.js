@@ -535,6 +535,27 @@
   bindTapControl(document.getElementById('btnJump'), doJump);
   bindTapControl(document.getElementById('btnThrow'), throwDranik);
 
+  // Кнопка "развернуть боком": пытается открыть страницу в полноэкранном
+  // режиме и заблокировать альбомную ориентацию (работает в основном
+  // в Chrome/Android; на iOS Safari API нет — тогда просто ничего не будет).
+  var rotateBtn = document.getElementById('rotateBtn');
+  if (rotateBtn) {
+    rotateBtn.addEventListener('click', function () {
+      var el = document.documentElement;
+      var requestFs = el.requestFullscreen || el.webkitRequestFullscreen;
+      var lockLandscape = function () {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(function () {});
+        }
+      };
+      if (requestFs) {
+        Promise.resolve(requestFs.call(el)).then(lockLandscape).catch(function () {});
+      } else {
+        lockLandscape();
+      }
+    });
+  }
+
   // ---------------------------------------------------------
   //  АДАПТИВНЫЙ МАСШТАБ (под маленькие/мобильные экраны)
   // ---------------------------------------------------------
@@ -564,8 +585,16 @@
     stage.style.height = Math.round(naturalH * scale) + 'px';
   }
 
+  function updateFullscreenLayout() {
+    var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    document.body.classList.toggle('is-fullscreen-game', isFs);
+    fitStage();
+  }
+
   window.addEventListener('resize', fitStage);
   window.addEventListener('orientationchange', fitStage);
+  document.addEventListener('fullscreenchange', updateFullscreenLayout);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenLayout);
   fitStage();
 
   // ---------------------------------------------------------
