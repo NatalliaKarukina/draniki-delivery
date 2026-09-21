@@ -276,9 +276,48 @@
   var bgOffset = 0;
   var roadDashOffset = 0;
 
+  var streetlamps, distSinceLamp, nextLampGap;
+  var LAMP_PARALLAX = 0.6;
+
   function randRange(a, b) { return a + Math.random() * (b - a); }
   function rectsOverlap(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  // Фоновый дождь — атмосферный слой, идёт всегда (даже на стартовом экране)
+  var RAIN_COUNT = 70;
+  var rain = [];
+  for (var ri = 0; ri < RAIN_COUNT; ri++) {
+    rain.push({
+      x: Math.random() * W, y: Math.random() * GROUND_Y,
+      len: 10 + Math.random() * 14, speed: 260 + Math.random() * 180
+    });
+  }
+
+  function updateRain(dt) {
+    for (var i = 0; i < rain.length; i++) {
+      var r = rain[i];
+      r.y += r.speed * dt;
+      r.x -= r.speed * 0.22 * dt;
+      if (r.y > GROUND_Y || r.x < -10) {
+        r.y = -10;
+        r.x = Math.random() * W;
+      }
+    }
+  }
+
+  function drawRain() {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(180, 220, 255, 0.32)';
+    ctx.lineWidth = 1;
+    for (var i = 0; i < rain.length; i++) {
+      var r = rain[i];
+      ctx.beginPath();
+      ctx.moveTo(r.x, r.y);
+      ctx.lineTo(r.x - r.len * 0.25, r.y - r.len);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // Процедурный силуэт панелек (фикс. массив, тайлится по ширине PATTERN_W)
@@ -316,7 +355,7 @@
       x: PLAYER_X, y: GROUND_Y - PLAYER_H, w: PLAYER_W, h: PLAYER_H,
       vy: 0, onGround: true,
       shielded: false, shieldTimer: 0,
-      throwFlash: 0, jumpAnim: 0
+      throwFlash: 0, jumpAnim: 0, landAnim: 0, runCycle: 0
     };
     money = 0;
     draniki = 10;
@@ -329,12 +368,15 @@
     sacks = [];
     projectiles = [];
     particles = [];
+    streetlamps = [];
 
     distSinceObstacle = 0;
     nextObstacleGap = randRange(340, 520);
     distSinceShop = 0;
     nextShopGap = randRange(420, 560);
     shopOrderIndex = Math.floor(Math.random() * shopOrder.length);
+    distSinceLamp = 0;
+    nextLampGap = randRange(220, 340);
 
     screenShake = 0;
     bgOffset = 0;
@@ -360,6 +402,14 @@
       var ch = 46;
       obstacles.push({ type: type, x: W + 20, y: GROUND_Y - ch, w: 30, h: ch, handled: false, bob: Math.random() * Math.PI * 2 });
     }
+  }
+
+  function spawnStreetlamp() {
+    streetlamps.push({
+      x: W + 20,
+      flicker: Math.random() * Math.PI * 2,
+      color: Math.random() < 0.5 ? '#5adcff' : '#ff5ad1'
+    });
   }
 
   function spawnShop() {
@@ -530,6 +580,8 @@
   // ---------------------------------------------------------
 
   function update(dt) {
+    updateRain(dt);
+
     if (state !== STATE_PLAYING) {
       updateParticles(dt);
       return;
@@ -543,6 +595,7 @@
     roadDashOffset = (roadDashOffset + moveDist) % 48;
 
     // --- игрок: физика прыжка ---
+    var wasOnGround = player.onGround;
     player.vy += GRAVITY * dt;
     player.y += player.vy * dt;
     if (player.y + player.h >= GROUND_Y) {
@@ -550,7 +603,10 @@
       player.vy = 0;
       player.onGround = true;
     }
+    if (!wasOnGround && player.onGround) player.landAnim = 1;
     if (player.jumpAnim > 0) player.jumpAnim = Math.max(0, player.jumpAnim - dt * 2);
+    if (player.landAnim > 0) player.landAnim = Math.max(0, player.landAnim - dt * 5);
+    if (player.onGround) player.runCycle += dt * (4 + scrollSpeed * 0.02);
 
     if (player.shielded) {
       player.shieldTimer -= dt;
@@ -573,6 +629,16 @@
       distSinceShop = 0;
       nextShopGap = randRange(560, 820);
     }
+
+    // --- спавн фонарей (средний слой параллакса) ---
+    distSinceLamp += moveDist;
+    if (distSinceLamp >= nextLampGap) {
+      spawnStreetlamp();
+      distSinceLamp = 0;
+      nextLampGap = randRange(220, 340);
+    }
+    streetlamps.forEach(function (l) { l.x -= moveDist * LAMP_PARALLAX; l.flicker += dt * 3; });
+    streetlamps = streetlamps.filter(function (l) { return l.x > -30; });
 
     // --- сдвиг мира ---
     moveAndPrune(obstacles, moveDist);
@@ -681,6 +747,8 @@
 
     drawSky();
     drawSkyline(bgOffset);
+    drawRain();
+    streetlamps.forEach(drawStreetlamp);
     drawRoad();
 
     shops.forEach(drawShop);
@@ -762,6 +830,29 @@
 
     ctx.fillStyle = 'rgba(255, 60, 200, 0.06)';
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  }
+
+  function drawStreetlamp(l) {
+    var poleH = 130;
+    var topY = GROUND_Y - poleH;
+
+    ctx.fillStyle = '#332c42';
+    ctx.fillRect(l.x - 2, topY, 4, poleH);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.fillRect(l.x - 2, topY, 1, poleH);
+    ctx.fillStyle = '#332c42';
+    ctx.fillRect(l.x - 2, topY - 3, 10, 3);
+
+    var glow = 0.65 + Math.sin(l.flicker) * 0.25;
+    ctx.save();
+    ctx.globalAlpha = glow;
+    ctx.shadowColor = l.color;
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = l.color;
+    ctx.beginPath();
+    ctx.arc(l.x + 6, topY - 4, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   function drawShop(shop) {
@@ -924,10 +1015,36 @@
     ctx.restore();
   }
 
+  function drawWheel(cx, cy, cycle) {
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    var angle = cycle * 6;
+    ctx.strokeStyle = '#4a4a55';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * 6, cy + Math.sin(angle) * 6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle + Math.PI) * 6, cy + Math.sin(angle + Math.PI) * 6);
+    ctx.stroke();
+  }
+
   function drawPlayer() {
     var p = player;
     ctx.save();
     ctx.translate(p.x, p.y);
+
+    // сквош-стретч: якорь в нижнем центре, между колёсами
+    var scaleY = (1 + p.jumpAnim * 0.16) * (1 - p.landAnim * 0.22);
+    var scaleX = 1 + (1 - scaleY) * 0.5;
+    ctx.translate(p.w / 2, p.h);
+    ctx.scale(scaleX, scaleY);
+    ctx.translate(-p.w / 2, -p.h);
 
     if (p.shielded) {
       ctx.save();
@@ -942,6 +1059,7 @@
     }
 
     var lean = p.onGround ? 0 : -6;
+    var bob = p.onGround ? Math.sin(p.runCycle * 2) * 1.4 : 0;
 
     // неоновая подсветка под самокатом
     ctx.fillStyle = 'rgba(90, 220, 255, 0.55)';
@@ -950,10 +1068,9 @@
     ctx.fillRect(2, p.h - 6, p.w - 4, 3);
     ctx.shadowBlur = 0;
 
-    // колёса
-    ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(8, p.h - 4, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(p.w - 8, p.h - 4, 7, 0, Math.PI * 2); ctx.fill();
+    // колёса со спицами (крутятся при педалировании)
+    drawWheel(8, p.h - 4, p.runCycle);
+    drawWheel(p.w - 8, p.h - 4, p.runCycle);
 
     // дека самоката
     ctx.fillStyle = '#2b2b34';
@@ -964,27 +1081,27 @@
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(p.w - 12, p.h - 12);
-    ctx.lineTo(p.w - 12 + lean, 6);
+    ctx.lineTo(p.w - 12 + lean, 6 + bob);
     ctx.stroke();
     ctx.fillStyle = '#3a3a44';
-    ctx.fillRect(p.w - 22 + lean, 4, 16, 4);
+    ctx.fillRect(p.w - 22 + lean, 4 + bob, 16, 4);
 
-    // курьер: тело
+    // курьер: тело (лёгкий bounce в такт педалированию)
     ctx.fillStyle = '#19c3d1';
-    ctx.fillRect(10 + lean * 0.3, p.h - 34, 18, 22);
+    ctx.fillRect(10 + lean * 0.3, p.h - 34 + bob, 18, 22);
     // рюкзак-коробка драников
     ctx.fillStyle = '#c9781f';
-    ctx.fillRect(2 + lean * 0.3, p.h - 32, 12, 16);
+    ctx.fillRect(2 + lean * 0.3, p.h - 32 + bob, 12, 16);
     ctx.strokeStyle = '#7a4610';
-    ctx.strokeRect(2 + lean * 0.3, p.h - 32, 12, 16);
+    ctx.strokeRect(2 + lean * 0.3, p.h - 32 + bob, 12, 16);
     // голова + шлем
     ctx.fillStyle = '#e8c9a0';
     ctx.beginPath();
-    ctx.arc(20 + lean * 0.4, p.h - 38, 8, 0, Math.PI * 2);
+    ctx.arc(20 + lean * 0.4, p.h - 38 + bob, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#e23f6b';
     ctx.beginPath();
-    ctx.arc(20 + lean * 0.4, p.h - 41, 8, Math.PI, 0);
+    ctx.arc(20 + lean * 0.4, p.h - 41 + bob, 8, Math.PI, 0);
     ctx.fill();
 
     ctx.restore();
