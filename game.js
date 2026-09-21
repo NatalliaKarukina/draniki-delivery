@@ -266,8 +266,9 @@
   var SHIELD_DURATION = 8;
 
   var player, money, draniki, scrollSpeed, elapsed;
-  var potholes, shops, people, sacks, projectiles, particles;
-  var distSincePothole, nextPotholeGap;
+  var obstacles, shops, people, sacks, projectiles, particles;
+  var distSinceObstacle, nextObstacleGap;
+  var OBSTACLE_TYPES = ['pothole', 'fence', 'courier'];
   var distSinceShop, nextShopGap;
   var shopOrder = ['EUROOPT', 'MILA', 'GEMMA'];
   var shopOrderIndex = 0;
@@ -322,15 +323,15 @@
     scrollSpeed = BASE_SPEED;
     elapsed = 0;
 
-    potholes = [];
+    obstacles = [];
     shops = [];
     people = [];
     sacks = [];
     projectiles = [];
     particles = [];
 
-    distSincePothole = 0;
-    nextPotholeGap = randRange(340, 520);
+    distSinceObstacle = 0;
+    nextObstacleGap = randRange(340, 520);
     distSinceShop = 0;
     nextShopGap = randRange(420, 560);
     shopOrderIndex = Math.floor(Math.random() * shopOrder.length);
@@ -346,9 +347,19 @@
   //  СПАВН ОБЪЕКТОВ
   // ---------------------------------------------------------
 
-  function spawnPothole() {
-    var w = randRange(46, 78);
-    potholes.push({ x: W + 20, y: GROUND_Y - 6, w: w, h: 16, handled: false });
+  function spawnObstacle() {
+    var type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+
+    if (type === 'pothole') {
+      var pw = randRange(46, 78);
+      obstacles.push({ type: type, x: W + 20, y: GROUND_Y - 6, w: pw, h: 16, handled: false });
+    } else if (type === 'fence') {
+      var fh = randRange(58, 88);
+      obstacles.push({ type: type, x: W + 20, y: GROUND_Y - fh, w: 30, h: fh, handled: false });
+    } else { // courier
+      var ch = 46;
+      obstacles.push({ type: type, x: W + 20, y: GROUND_Y - ch, w: 30, h: ch, handled: false, bob: Math.random() * Math.PI * 2 });
+    }
   }
 
   function spawnShop() {
@@ -539,12 +550,12 @@
     }
     if (player.throwFlash > 0) player.throwFlash -= dt;
 
-    // --- спавн ям ---
-    distSincePothole += moveDist;
-    if (distSincePothole >= nextPotholeGap) {
-      spawnPothole();
-      distSincePothole = 0;
-      nextPotholeGap = randRange(300, 560);
+    // --- спавн препятствий (ямы, заборы, курьеры-конкуренты) ---
+    distSinceObstacle += moveDist;
+    if (distSinceObstacle >= nextObstacleGap) {
+      spawnObstacle();
+      distSinceObstacle = 0;
+      nextObstacleGap = randRange(300, 560);
     }
 
     // --- спавн магазинов ---
@@ -556,9 +567,10 @@
     }
 
     // --- сдвиг мира ---
-    moveAndPrune(potholes, moveDist);
+    moveAndPrune(obstacles, moveDist);
     moveAndPrune(shops, moveDist);
     moveAndPrune(people, moveDist);
+    obstacles.forEach(function (o) { if (o.type === 'courier') o.bob += dt * 10; });
     sacks.forEach(function (s) { s.x -= moveDist; s.phase += dt * 3; s.y = s.baseY + Math.sin(s.phase) * 8; });
     sacks = sacks.filter(function (s) { return s.x + s.w > -40 && !s.collected; });
 
@@ -573,9 +585,9 @@
       }
     }
 
-    // --- ямы: столкновение ---
-    for (var pi = 0; pi < potholes.length; pi++) {
-      var hole = potholes[pi];
+    // --- препятствия: столкновение ---
+    for (var pi = 0; pi < obstacles.length; pi++) {
+      var hole = obstacles[pi];
       if (hole.handled) continue;
       if (rectsOverlap(player, hole)) {
         hole.handled = true;
@@ -664,7 +676,7 @@
     drawRoad();
 
     shops.forEach(drawShop);
-    potholes.forEach(drawPothole);
+    obstacles.forEach(drawObstacle);
     sacks.forEach(drawSack);
     people.forEach(drawPerson);
     drawPlayer();
@@ -779,6 +791,12 @@
     ctx.fillRect(shop.x + shop.w / 2 - 16, shop.y + shop.h - 46, 32, 46);
   }
 
+  function drawObstacle(o) {
+    if (o.type === 'pothole') drawPothole(o);
+    else if (o.type === 'fence') drawFence(o);
+    else drawCourierObstacle(o);
+  }
+
   function drawPothole(hole) {
     ctx.fillStyle = '#050408';
     ctx.beginPath();
@@ -787,6 +805,65 @@
     ctx.strokeStyle = '#3a3440';
     ctx.lineWidth = 2;
     ctx.stroke();
+  }
+
+  function drawFence(f) {
+    ctx.fillStyle = '#221a10';
+    ctx.fillRect(f.x, f.y, f.w, f.h);
+
+    ctx.fillStyle = '#3c2e1a';
+    var plankW = f.w / 3;
+    for (var i = 0; i < 3; i++) {
+      ctx.fillRect(f.x + i * plankW + 2, f.y, plankW - 4, f.h);
+    }
+
+    ctx.fillStyle = '#1a1310';
+    ctx.fillRect(f.x - 3, f.y + f.h * 0.32, f.w + 6, 7);
+
+    ctx.strokeStyle = '#0c0906';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(f.x, f.y, f.w, f.h);
+  }
+
+  function drawCourierObstacle(c) {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+
+    var legShift = Math.sin(c.bob) * 3;
+
+    // ноги (шагающая анимация)
+    ctx.fillStyle = '#1c1f28';
+    ctx.fillRect(6 + legShift, c.h - 14, 7, 14);
+    ctx.fillRect(c.w - 13 - legShift, c.h - 14, 7, 14);
+
+    // тело — тёмная курьерская форма
+    ctx.fillStyle = '#2b2f3a';
+    ctx.fillRect(5, 16, c.w - 10, c.h - 30);
+
+    // жёлтый рюкзак конкурентов
+    ctx.save();
+    ctx.shadowColor = '#ffd23f';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ffd23f';
+    ctx.fillRect(-2, 13, 13, 20);
+    ctx.strokeStyle = '#8a6400';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-2, 13, 13, 20);
+    ctx.restore();
+
+    // голова
+    ctx.fillStyle = '#e8c9a0';
+    ctx.beginPath();
+    ctx.arc(c.w / 2, 8, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // тёмная кепка
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(c.w / 2, 5, 8, Math.PI, 0);
+    ctx.fill();
+
+    ctx.restore();
   }
 
   function drawSack(s) {
@@ -947,7 +1024,7 @@
     ctx.fillText('ArrowUp / W / Пробел — прыжок цераз ямы', W / 2, 300);
     ctx.fillText('E / Enter — кінуць гарачы дранік', W / 2, 328);
     ctx.fillText('ЕВРООПТ: трапі ў чалавека = +500 BYN', W / 2, 366);
-    ctx.fillText('МІЛА: шчыт ад адной ямы', W / 2, 390);
+    ctx.fillText('МІЛА: шчыт ад адной перашкоды', W / 2, 390);
     ctx.fillText('ГЕММА: мяшкі бульбы = +5 дранікаў', W / 2, 414);
 
     if (Math.floor(performance.now() / 500) % 2 === 0) {
