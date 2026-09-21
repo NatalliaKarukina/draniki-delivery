@@ -136,7 +136,15 @@
     osc.start(t); osc.stop(t + 0.17);
   }
 
-  function playThrow() {
+  // Настоящий 8-битный сэмпл для броска (файл в sfx/) — грузится через
+  // <audio>, а не fetch(), чтобы игра по-прежнему открывалась двойным
+  // кликом по index.html без сервера (fetch() блокируется CORS на file://,
+  // а <audio src> — нет).
+  var throwSfxAudio = new Audio('sfx/dranik-throw.mp3');
+  throwSfxAudio.volume = 0.7;
+  throwSfxAudio.preload = 'auto';
+
+  function playThrowSynth() {
     if (!audioCtx) return;
     var t = audioCtx.currentTime;
     var osc = audioCtx.createOscillator();
@@ -148,6 +156,16 @@
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
     osc.connect(g); g.connect(sfxGain);
     osc.start(t); osc.stop(t + 0.11);
+  }
+
+  function playThrow() {
+    try {
+      throwSfxAudio.currentTime = 0;
+      var p = throwSfxAudio.play();
+      if (p && p.catch) p.catch(playThrowSynth);
+    } catch (e) {
+      playThrowSynth();
+    }
   }
 
   function playEmptyClick() {
