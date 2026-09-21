@@ -300,6 +300,7 @@
   var SHIELD_DURATION = 8;
 
   var player, money, draniki, scrollSpeed, elapsed;
+  var totalDistance, zoneIndex, zoneBanner;
   var obstacles, shops, people, sacks, projectiles, particles;
   var distSinceObstacle, nextObstacleGap;
   var OBSTACLE_TYPES = ['pothole', 'fence', 'courier'];
@@ -312,7 +313,36 @@
 
   var roadDecor, distSinceDecor, nextDecorGap;
   var DECOR_PARALLAX = 0.6;
-  var DECOR_TYPES = ['lamp', 'tree', 'tree'];
+
+  // Раёны Гродна, якія змяняюцца па меры пройдзенай дыстанцыі.
+  var ZONE_LENGTH = 2600;
+  var DISTRICTS = [
+    {
+      name: 'СТАРЫ ГОРАД', sky: ['#241608', '#402a12', '#5e4018'],
+      building: '#2e2416', windows: ['#ffcf7a', '#ffb04a'],
+      heightMult: 0.5, treeChance: 0.25, decorGap: [120, 190]
+    },
+    {
+      name: 'НОВЫ СВЕТ', sky: ['#1c1410', '#302218', '#482c1a'],
+      building: '#332215', windows: ['#ffb15a', '#ff8a3a'],
+      heightMult: 0.4, treeChance: 0.35, decorGap: [160, 240]
+    },
+    {
+      name: 'ЛОСОСНА', sky: ['#141c22', '#22323a', '#3a4e52'],
+      building: '#241e1a', windows: ['#d8a868', '#b88848'],
+      heightMult: 0.4, treeChance: 0.6, decorGap: [220, 340]
+    },
+    {
+      name: 'АЛЬШАНКА', sky: ['#1a1030', '#2a1550', '#4a1f6a'],
+      building: '#151a28', windows: ['#5ef0ff', '#e8f4ff'],
+      heightMult: 1.15, treeChance: 0.2, decorGap: [180, 280]
+    },
+    {
+      name: 'РУМЛЁВА', sky: ['#0f1e18', '#1a3428', '#2a5040'],
+      building: '#161e1a', windows: ['#8aff9d', '#5ef0c8'],
+      heightMult: 0.65, treeChance: 0.9, decorGap: [130, 210]
+    }
+  ];
 
   function randRange(a, b) { return a + Math.random() * (b - a); }
   function rectsOverlap(a, b) {
@@ -339,7 +369,7 @@
       for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
           if (rnd() < 0.35) {
-            windows.push({ c: c, r: r, color: rnd() < 0.5 ? '#ffd76a' : '#5ef0ff' });
+            windows.push({ c: c, r: r, colorIdx: rnd() < 0.5 ? 0 : 1 });
           }
         }
       }
@@ -374,8 +404,12 @@
     distSinceShop = 0;
     nextShopGap = randRange(420, 560);
     shopOrderIndex = Math.floor(Math.random() * shopOrder.length);
+    totalDistance = 0;
+    zoneIndex = 0;
+    zoneBanner = { text: DISTRICTS[0].name, life: 3 };
+
     distSinceDecor = 0;
-    nextDecorGap = randRange(160, 260);
+    nextDecorGap = randRange(DISTRICTS[0].decorGap[0], DISTRICTS[0].decorGap[1]);
 
     screenShake = 0;
     bgOffset = 0;
@@ -404,7 +438,7 @@
   }
 
   function spawnRoadDecor() {
-    var type = DECOR_TYPES[Math.floor(Math.random() * DECOR_TYPES.length)];
+    var type = Math.random() < DISTRICTS[zoneIndex].treeChance ? 'tree' : 'lamp';
     if (type === 'lamp') {
       roadDecor.push({
         type: type, x: W + 20,
@@ -623,6 +657,15 @@
     bgOffset = (bgOffset + moveDist * 0.28) % PATTERN_W;
     roadDashOffset = (roadDashOffset + moveDist) % 48;
 
+    // --- раёны: змена зоны па дыстанцыі ---
+    totalDistance += moveDist;
+    var newZoneIndex = Math.floor(totalDistance / ZONE_LENGTH) % DISTRICTS.length;
+    if (newZoneIndex !== zoneIndex) {
+      zoneIndex = newZoneIndex;
+      zoneBanner = { text: DISTRICTS[zoneIndex].name, life: 3 };
+    }
+    if (zoneBanner.life > 0) zoneBanner.life = Math.max(0, zoneBanner.life - dt);
+
     // --- игрок: физика прыжка ---
     var wasOnGround = player.onGround;
     player.vy += GRAVITY * dt;
@@ -664,7 +707,8 @@
     if (distSinceDecor >= nextDecorGap) {
       spawnRoadDecor();
       distSinceDecor = 0;
-      nextDecorGap = randRange(160, 260);
+      var gap = DISTRICTS[zoneIndex].decorGap;
+      nextDecorGap = randRange(gap[0], gap[1]);
     }
     roadDecor.forEach(function (d) { d.x -= moveDist * DECOR_PARALLAX; if (d.type === 'lamp') d.flicker += dt * 3; });
     roadDecor = roadDecor.filter(function (d) { return d.x > -40; });
@@ -788,6 +832,7 @@
     particles.forEach(drawParticle);
 
     drawHUD();
+    drawZoneBanner();
 
     ctx.restore();
 
@@ -796,10 +841,11 @@
   }
 
   function drawSky() {
+    var zone = DISTRICTS[zoneIndex];
     var g = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-    g.addColorStop(0, '#160821');
-    g.addColorStop(0.55, '#391150');
-    g.addColorStop(1, '#7a1f5e');
+    g.addColorStop(0, zone.sky[0]);
+    g.addColorStop(0.55, zone.sky[1]);
+    g.addColorStop(1, zone.sky[2]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, GROUND_Y);
 
@@ -826,17 +872,19 @@
   }
 
   function drawSkylineAt(originX) {
+    var zone = DISTRICTS[zoneIndex];
     for (var i = 0; i < BUILDINGS.length; i++) {
       var b = BUILDINGS[i];
       var bx = originX + b.x;
       if (bx + b.w < -20 || bx > W + 20) continue;
-      var by = GROUND_Y - b.h;
-      ctx.fillStyle = '#1a1024';
-      ctx.fillRect(bx, by, b.w, b.h);
-      var cw = b.w / b.cols, ch = b.h / b.rows;
+      var bh = b.h * zone.heightMult;
+      var by = GROUND_Y - bh;
+      ctx.fillStyle = zone.building;
+      ctx.fillRect(bx, by, b.w, bh);
+      var cw = b.w / b.cols, ch = bh / b.rows;
       for (var wi = 0; wi < b.windows.length; wi++) {
         var win = b.windows[wi];
-        ctx.fillStyle = win.color;
+        ctx.fillStyle = zone.windows[win.colorIdx];
         ctx.globalAlpha = 0.85;
         ctx.fillRect(bx + win.c * cw + 3, by + win.r * ch + 3, cw - 6, ch - 6);
         ctx.globalAlpha = 1;
@@ -1211,6 +1259,30 @@
     ctx.shadowColor = '#ffd23f';
     ctx.fillText('ДРАНИКИ: ' + draniki, 22, 58);
 
+    ctx.restore();
+  }
+
+  function drawZoneBanner() {
+    if (!zoneBanner || zoneBanner.life <= 0) return;
+    var t = 3 - zoneBanner.life;
+    var alpha;
+    if (t < 0.4) alpha = t / 0.4;
+    else if (zoneBanner.life < 0.6) alpha = zoneBanner.life / 0.6;
+    else alpha = 1;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.font = "16px 'Press Start 2P', monospace";
+    var textW = ctx.measureText(zoneBanner.text).width;
+
+    ctx.fillStyle = 'rgba(8, 8, 14, 0.6)';
+    ctx.fillRect(W / 2 - textW / 2 - 18, 16, textW + 36, 34);
+
+    ctx.shadowColor = '#ffd23f';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#ffd23f';
+    ctx.fillText(zoneBanner.text, W / 2, 39);
     ctx.restore();
   }
 
