@@ -96,6 +96,8 @@
     }
   }
 
+  var musicRunning = false;
+
   function startMusic() {
     if (!audioCtx) return;
     stopMusic();
@@ -103,6 +105,7 @@
     nextNoteTime = audioCtx.currentTime + 0.05;
     musicScheduleAhead();
     musicSchedulerId = setInterval(musicScheduleAhead, 60);
+    musicRunning = true;
   }
 
   function stopMusic() {
@@ -110,6 +113,13 @@
       clearInterval(musicSchedulerId);
       musicSchedulerId = null;
     }
+    musicRunning = false;
+  }
+
+  // Музыка звучит фоном уже на экране описания — включаем её по самому
+  // первому взаимодействию с страницей, а не только по старту игры.
+  function ensureMusicPlaying() {
+    if (!musicRunning) startMusic();
   }
 
   function playJump() {
@@ -459,7 +469,7 @@
     if (audioCtx.state === 'suspended') audioCtx.resume();
     resetGame();
     state = STATE_PLAYING;
-    startMusic();
+    ensureMusicPlaying();
   }
 
   function restartGame() {
@@ -476,6 +486,16 @@
 
   var JUMP_KEYS = { ArrowUp: 1, KeyW: 1, Space: 1 };
   var THROW_KEYS = { KeyE: 1, Enter: 1 };
+
+  // Музыка стартует по самому первому клику/тапу/нажатию клавиши где угодно
+  // на странице — играет фоном уже над описанием, до начала самой игры.
+  function unlockAmbientAudio() {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    ensureMusicPlaying();
+  }
+  window.addEventListener('pointerdown', unlockAmbientAudio, { once: true });
+  window.addEventListener('keydown', unlockAmbientAudio, { once: true });
 
   window.addEventListener('keydown', function (e) {
     if (JUMP_KEYS[e.code] || THROW_KEYS[e.code]) e.preventDefault();
