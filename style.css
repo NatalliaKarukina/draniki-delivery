@@ -23,31 +23,6 @@ body {
     radial-gradient(ellipse at 50% 30%, #1a1030 0%, #0a0a12 60%, #050508 100%);
 }
 
-/* Полноэкранный режим игры (кнопка "развернуть боком"): описание прячем,
-   рамку ТВ сводим почти к нулю — под саму игру достаётся максимум места. */
-body.is-fullscreen-game {
-  padding: 6px;
-}
-
-body.is-fullscreen-game .intro {
-  display: none;
-}
-
-body.is-fullscreen-game .tv-top,
-body.is-fullscreen-game .tv-bottom {
-  display: none;
-}
-
-body.is-fullscreen-game .tv-container {
-  padding: 4px;
-  border-radius: 10px;
-}
-
-body.is-fullscreen-game .screen-frame {
-  padding: 4px 5px;
-  border-radius: 8px;
-}
-
 /* ---------- Описание перед игрой ---------- */
 
 .intro {
@@ -109,24 +84,6 @@ body.is-fullscreen-game .screen-frame {
   color: #8f8ba8;
 }
 
-.rotate-hint {
-  display: none;
-  margin: 10px auto 0;
-  padding: 10px 16px;
-  font-family: -apple-system, 'Segoe UI', Consolas, monospace;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1a1030;
-  background: #ffd23f;
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 0 14px rgba(255, 210, 63, 0.5);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.rotate-hint:active {
-  transform: scale(0.97);
-}
 
 .sound-hint {
   margin: 10px 0 0;
@@ -145,12 +102,6 @@ body.is-fullscreen-game .screen-frame {
 @keyframes sound-hint-pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
-}
-
-@media (max-width: 700px) and (orientation: portrait) {
-  .rotate-hint {
-    display: block;
-  }
 }
 
 /* ---------- Компактный корпус на маленьких экранах ---------- */
@@ -199,6 +150,48 @@ body.is-fullscreen-game .screen-frame {
 .stage {
   position: relative;
   overflow: hidden;
+}
+
+/* На узком портретном телефоне разворачиваем игру на 90° средствами CSS —
+   работает на любом браузере без каких-либо API, ничего нажимать не нужно.
+   Клики/тапы браузер сам корректно бьёт по повёрнутым элементам. Этот блок
+   специально идёт ПОСЛЕ общего правила .stage выше, иначе более позднее
+   position:relative по порядку каскада перебило бы наш position:fixed. */
+@media (max-width: 700px) and (orientation: portrait) {
+  .intro {
+    display: none;
+  }
+
+  body {
+    padding: 0;
+  }
+
+  .tv-top,
+  .tv-bottom {
+    display: none;
+  }
+
+  .tv-container {
+    padding: 6px;
+    border-radius: 10px;
+  }
+
+  .screen-frame {
+    padding: 5px 6px;
+    border-radius: 8px;
+  }
+
+  .stage {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 100vh;
+    height: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
 }
 
 /* ---------- Корпус телевизора ---------- */

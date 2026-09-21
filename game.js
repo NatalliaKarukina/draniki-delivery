@@ -160,7 +160,13 @@
 
   function playThrow() {
     try {
-      throwSfxAudio.currentTime = 0;
+      // Сброс позиции безопасен только когда метаданные уже загружены —
+      // на мобильном интернете readyState нередко ещё 0 к моменту броска,
+      // и currentTime=0 тогда кидает исключение (мы тихо проваливались
+      // в запасной синт-звук на каждом броске).
+      if (throwSfxAudio.readyState > 0) {
+        throwSfxAudio.currentTime = 0;
+      }
       var p = throwSfxAudio.play();
       if (p && p.catch) p.catch(playThrowSynth);
     } catch (e) {
@@ -553,27 +559,6 @@
   bindTapControl(document.getElementById('btnJump'), doJump);
   bindTapControl(document.getElementById('btnThrow'), throwDranik);
 
-  // Кнопка "развернуть боком": пытается открыть страницу в полноэкранном
-  // режиме и заблокировать альбомную ориентацию (работает в основном
-  // в Chrome/Android; на iOS Safari API нет — тогда просто ничего не будет).
-  var rotateBtn = document.getElementById('rotateBtn');
-  if (rotateBtn) {
-    rotateBtn.addEventListener('click', function () {
-      var el = document.documentElement;
-      var requestFs = el.requestFullscreen || el.webkitRequestFullscreen;
-      var lockLandscape = function () {
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock('landscape').catch(function () {});
-        }
-      };
-      if (requestFs) {
-        Promise.resolve(requestFs.call(el)).then(lockLandscape).catch(function () {});
-      } else {
-        lockLandscape();
-      }
-    });
-  }
-
   // ---------------------------------------------------------
   //  АДАПТИВНЫЙ МАСШТАБ (под маленькие/мобильные экраны)
   // ---------------------------------------------------------
@@ -583,36 +568,42 @@
     var tv = document.querySelector('.tv-container');
     if (!stage || !tv) return;
 
+    // На узком портретном телефоне .stage развёрнут CSS-transform'ом на 90°
+    // и залезает всей своей площадью в окно (см. media-запрос в style.css) —
+    // тогда "ширина" под игру — это высота окна, а "высота" — его ширина.
+    var rotated = window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches;
+
     tv.style.transform = 'none';
     var naturalW = tv.offsetWidth;
     var naturalH = tv.offsetHeight;
 
-    var bodyStyle = window.getComputedStyle(document.body);
-    var vPadding = parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom);
-
-    // Высота описания намеренно не учитывается: телевизор всегда старается
-    // показаться в полный (или ограниченный шириной) размер, а если вместе
-    // с описанием он не помещается в окно — страница просто прокручивается.
     var margin = 16;
-    var availW = window.innerWidth - margin;
-    var availH = window.innerHeight - vPadding - margin;
+    var availW, availH;
+    if (rotated) {
+      availW = window.innerHeight - margin;
+      availH = window.innerWidth - margin;
+    } else {
+      var bodyStyle = window.getComputedStyle(document.body);
+      var vPadding = parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom);
+      availW = window.innerWidth - margin;
+      availH = window.innerHeight - vPadding - margin;
+    }
     var scale = Math.min(1, availW / naturalW, availH / naturalH);
 
     tv.style.transform = 'scale(' + scale + ')';
-    stage.style.width = Math.round(naturalW * scale) + 'px';
-    stage.style.height = Math.round(naturalH * scale) + 'px';
-  }
-
-  function updateFullscreenLayout() {
-    var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    document.body.classList.toggle('is-fullscreen-game', isFs);
-    fitStage();
+    if (rotated) {
+      // Размер и позиция .stage в этом режиме заданы в CSS (100vh x 100vw
+      // + rotate); инлайн-стили только мешали бы — снимаем их, если остались.
+      stage.style.width = '';
+      stage.style.height = '';
+    } else {
+      stage.style.width = Math.round(naturalW * scale) + 'px';
+      stage.style.height = Math.round(naturalH * scale) + 'px';
+    }
   }
 
   window.addEventListener('resize', fitStage);
   window.addEventListener('orientationchange', fitStage);
-  document.addEventListener('fullscreenchange', updateFullscreenLayout);
-  document.addEventListener('webkitfullscreenchange', updateFullscreenLayout);
   fitStage();
 
   // ---------------------------------------------------------
