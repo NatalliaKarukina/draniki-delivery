@@ -978,6 +978,34 @@
   }
 
   function drawPerson(p) {
+    // плакат "ГОЛОДЕН!!!" — держит перед собой
+    var signW = 50, signH = 26;
+    var stickX = p.x + p.w - 3;
+    var stickTopY = p.y - 26;
+
+    ctx.save();
+    ctx.strokeStyle = '#5a4020';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(stickX, p.y + 8);
+    ctx.lineTo(stickX, stickTopY);
+    ctx.stroke();
+
+    var signX = stickX - signW + 10;
+    var signY = stickTopY - signH + 8;
+    ctx.fillStyle = '#a9865a';
+    ctx.fillRect(signX, signY, signW, signH);
+    ctx.strokeStyle = '#5a4020';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(signX, signY, signW, signH);
+
+    ctx.fillStyle = '#2a1f14';
+    ctx.font = "7px 'Press Start 2P', monospace";
+    ctx.textAlign = 'center';
+    ctx.fillText('ГАЛОДНЫ', signX + signW / 2, signY + 12);
+    ctx.fillText('!!!', signX + signW / 2, signY + 21);
+    ctx.restore();
+
     ctx.fillStyle = '#8892b0';
     ctx.fillRect(p.x + 4, p.y + 12, p.w - 8, p.h - 12);
     ctx.fillStyle = '#e8c9a0';
