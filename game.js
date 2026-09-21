@@ -940,7 +940,7 @@
 
   function drawShop(shop) {
     var palette = {
-      EUROOPT: { wall: '#0e2c22', neon: '#39ff8f', label: 'ЕВРООПТ' },
+      EUROOPT: { wall: '#0e2c22', neon: '#39ff8f', label: 'ЕУРАОПТ' },
       MILA: { wall: '#2c0e26', neon: '#ff5ad1', label: 'МІЛА' },
       GEMMA: { wall: '#2c1e0e', neon: '#ffb23f', label: 'ГЕММА' }
     }[shop.type];
@@ -1283,7 +1283,7 @@
     ctx.fillStyle = '#e6e6f0';
     ctx.fillText('ArrowUp / W / Пробел — прыжок цераз ямы', W / 2, 300);
     ctx.fillText('E / Enter — кінуць гарачы дранік', W / 2, 328);
-    ctx.fillText('ЕВРООПТ: трапі ў чалавека = +500 BYN', W / 2, 366);
+    ctx.fillText('ЕУРАОПТ: трапі ў чалавека = +500 BYN', W / 2, 366);
     ctx.fillText('МІЛА: шчыт ад адной перашкоды', W / 2, 390);
     ctx.fillText('ГЕММА: мяшкі бульбы = +5 дранікаў', W / 2, 414);
 
